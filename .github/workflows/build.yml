@@ -1,0 +1,45 @@
+name: Build
+
+on: [push, pull_request]
+
+jobs:
+  lint-and-build:
+    strategy:
+      matrix:
+        platform: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Install Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: 'stable'
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Environment information
+        run: |
+          go version
+          go env
+      - name: Vet
+        if: matrix.platform == 'ubuntu-latest'
+        run: go vet -v ./...
+      - name: Lint
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          go install golang.org/x/lint/golint@latest
+          golint -set_exit_status ./...
+      - name: staticcheck.io
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          go install honnef.co/go/tools/cmd/staticcheck@latest
+          staticcheck -checks all ./...
+      - name: Formatting
+        if: matrix.platform == 'ubuntu-latest'
+        run: |
+          export PATH=$PATH:$(go env GOPATH)/bin
+          go install mvdan.cc/gofumpt@latest
+          gofumpt -d .
+          [ -z "$(gofumpt -l .)" ]
+      - name: Build
+        run: go build .

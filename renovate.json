@@ -1,0 +1,46 @@
+{
+  "extends": [
+    "config:base",
+    ":disableDependencyDashboard"
+  ],
+  "assignees": [
+    "x-way"
+  ],
+  "reviewers": [
+    "x-way"
+  ],
+  "labels": [
+    "renovate"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "packageRules": [
+    {
+      "packageNames": [
+        "golang.org/x/sys",
+        "golang.org/x/net"
+      ],
+      "updateTypes": [
+        "digest",
+        "patch",
+        "minor"
+      ],
+      "reviewers": [],
+      "assignees": [],
+      "automerge": true
+    },
+    {
+      "packageNames": [
+        "github.com/gopacket/gopacket"
+      ],
+      "updateTypes": [
+        "digest",
+        "patch"
+      ],
+      "reviewers": [],
+      "assignees": [],
+      "automerge": true
+    }
+  ]
+}
