@@ -22,12 +22,6 @@ jobs:
       - name: Vet
         if: matrix.platform == 'ubuntu-latest'
         run: go vet -v ./...
-      - name: Lint
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          go install golang.org/x/lint/golint@latest
-          golint -set_exit_status ./...
       - name: staticcheck.io
         if: matrix.platform == 'ubuntu-latest'
         run: |
