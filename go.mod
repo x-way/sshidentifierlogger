@@ -1,6 +1,6 @@
 module github.com/x-way/sshidentifierlogger
 
-go 1.23.5
+go 1.23.0
 
 require github.com/gopacket/gopacket v1.3.1
 
