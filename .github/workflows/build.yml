@@ -15,25 +15,8 @@ jobs:
           go-version: 'stable'
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Environment information
-        run: |
-          go version
-          go env
-      - name: Vet
+      - name: Lint
         if: matrix.platform == 'ubuntu-latest'
-        run: go vet -v ./...
-      - name: staticcheck.io
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          go install honnef.co/go/tools/cmd/staticcheck@latest
-          staticcheck -checks all ./...
-      - name: Formatting
-        if: matrix.platform == 'ubuntu-latest'
-        run: |
-          export PATH=$PATH:$(go env GOPATH)/bin
-          go install mvdan.cc/gofumpt@latest
-          gofumpt -d .
-          [ -z "$(gofumpt -l .)" ]
+        run: make lint
       - name: Build
-        run: go build .
+        run: make build
