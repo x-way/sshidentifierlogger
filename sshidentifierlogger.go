@@ -45,7 +45,9 @@ func main() {
 		f, _ := os.Open(*fname)
 		defer f.Close()
 		if handle, err := pcapgo.NewReader(f); err != nil {
-			logger.Err(fmt.Sprintf("NewReader error: %v", err))
+			if logerr := logger.Err(fmt.Sprintf("NewReader error: %v", err)); logerr != nil {
+				log.Fatal(logerr)
+			}
 			log.Fatal("NewReader error:", err)
 		} else {
 			run(handle, handle.LinkType())
@@ -55,7 +57,9 @@ func main() {
 			fmt.Println("reading packets from interface " + *iface)
 		}
 		if handle, err := liveHandle(*iface); err != nil {
-			logger.Err(fmt.Sprintf("NewEthernetHandle error: %v", err))
+			if logerr := logger.Err(fmt.Sprintf("NewEthernetHandle error: %v", err)); logerr != nil {
+				log.Fatal(logerr)
+			}
 			log.Fatal("NewEthernetHandle error:", err)
 		} else {
 			defer handle.Close()
@@ -112,7 +116,9 @@ loop:
 			if *debug {
 				fmt.Println(string(b))
 			} else {
-				logger.Info(string(b))
+				if err := logger.Info(string(b)); err != nil {
+					log.Fatal(err)
+				}
 			}
 		}
 	}
