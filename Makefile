@@ -1,20 +1,35 @@
-.PHONY: all build format lint clean
+.PHONY: build test lint format coverage clean all
 
-all: format lint build
+SRCDIR=.
+BINNAME=sshidentifierlogger
+
+all: format lint test build
 
 build:
-	go build .
-	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o sshidentifierlogger.aarch64 .
-	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o sshidentifierlogger.amd64 .
+	go build -o $(BINNAME) $(SRCDIR)
+	GOOS=linux GOARCH=arm64 CGO_ENABLED=0 go build -o $(BINNAME).aarch64 $(SRCDIR)
+	GOOS=linux GOARCH=amd64 CGO_ENABLED=0 go build -o $(BINNAME).amd64 $(SRCDIR)
 
-format:
-	go install mvdan.cc/gofumpt@latest
-	gofumpt -w .
+test:
+	go test -v ./...
 
 lint:
 	go vet -v ./...
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
+	golangci-lint run
 	go install honnef.co/go/tools/cmd/staticcheck@latest
 	staticcheck -checks all ./...
+	go install golang.org/x/vuln/cmd/govulncheck@latest
+	govulncheck ./...
+
+format:
+	go fmt ./...
+	go install mvdan.cc/gofumpt@latest
+	gofumpt -w .
+
+coverage:
+	go test -coverprofile=coverage.out ./...
+	go tool cover -html=coverage.out -o coverage.html
 
 clean:
-	rm -f sshidentifierlogger sshidentifierlogger.aarch64 sshidentifierlogger.amd64
+	rm -f $(BINNAME) $(BINNAME).aarch64 $(BINNAME).amd64 coverage.out coverage.html
