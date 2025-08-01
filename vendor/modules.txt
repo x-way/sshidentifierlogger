@@ -1,7 +1,7 @@
-# github.com/gopacket/gopacket v1.3.1
-## explicit; go 1.22.0
+# github.com/gopacket/gopacket v1.4.0
+## explicit; go 1.23.0
 github.com/gopacket/gopacket
-github.com/gopacket/gopacket/htons
+github.com/gopacket/gopacket/endian
 github.com/gopacket/gopacket/layers
 github.com/gopacket/gopacket/pcapgo
 # golang.org/x/net v0.42.0
