@@ -1,4 +1,4 @@
-# github.com/gopacket/gopacket v1.7.0
+# github.com/gopacket/gopacket v1.7.1
 ## explicit; go 1.25.0
 github.com/gopacket/gopacket
 github.com/gopacket/gopacket/endian
