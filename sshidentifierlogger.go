@@ -62,7 +62,7 @@ func main() {
 			}
 			log.Fatal("NewEthernetHandle error:", err)
 		} else {
-			defer handle.Close()
+			defer func() { _ = handle.Close() }()
 			run(handle, layers.LayerTypeEthernet)
 		}
 	}
