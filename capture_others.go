@@ -20,8 +20,9 @@ func (f fakeHandle) ReadPacketData() ([]byte, gopacket.CaptureInfo, error) {
 	return nil, gopacket.CaptureInfo{}, errNotLinux
 }
 
-func (f *fakeHandle) Close() {
+func (f *fakeHandle) Close() error {
 	// Dummy
+	return nil
 }
 
 func liveHandle(_ string) (fakeHandle, error) {

@@ -43,7 +43,7 @@ func main() {
 			fmt.Println("reading packets from file " + *fname)
 		}
 		f, _ := os.Open(*fname)
-		defer f.Close()
+		defer func() { _ = f.Close() }()
 		if handle, err := pcapgo.NewReader(f); err != nil {
 			if logerr := logger.Err(fmt.Sprintf("NewReader error: %v", err)); logerr != nil {
 				log.Fatal(logerr)
@@ -62,7 +62,7 @@ func main() {
 			}
 			log.Fatal("NewEthernetHandle error:", err)
 		} else {
-			defer handle.Close()
+			defer func() { _ = handle.Close() }()
 			run(handle, layers.LayerTypeEthernet)
 		}
 	}
@@ -75,7 +75,7 @@ func run(src gopacket.PacketDataSource, dec gopacket.Decoder) {
 	source.DecodeStreamsAsDatagrams = true
 loop:
 	for packet := range source.Packets() {
-		if packet.Metadata().CaptureInfo.Length < 67 {
+		if packet.Metadata().Length < 67 {
 			continue
 		}
 		tcpLayer := packet.Layer(layers.LayerTypeTCP)
@@ -86,7 +86,7 @@ loop:
 		if int(tcp.SrcPort) != 22 && int(tcp.DstPort) != 22 {
 			continue
 		}
-		if !bytes.HasPrefix(tcp.BaseLayer.Payload, []byte("SSH-")) {
+		if !bytes.HasPrefix(tcp.Payload, []byte("SSH-")) {
 			continue
 		}
 		src, dst := packet.NetworkLayer().NetworkFlow().Endpoints()
@@ -101,7 +101,7 @@ loop:
 			}
 		}
 
-		lines := strings.Split(string(tcp.BaseLayer.Payload), "\n")
+		lines := strings.Split(string(tcp.Payload), "\n")
 		entry := logEntry{
 			SrcIP:    srcString,
 			DstIP:    dstString,
