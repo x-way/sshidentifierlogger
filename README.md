@@ -1,4 +1,5 @@
 # sshidentifierlogger
+[![CircleCI](https://circleci.com/gh/x-way/sshidentifierlogger/tree/main.svg?style=svg)](https://circleci.com/gh/x-way/sshidentifierlogger/tree/main)
 
 Log SSH identification strings. Collect information about which tools are used for SSH scanning/enumeration/bruteforcing against a machine.
 
