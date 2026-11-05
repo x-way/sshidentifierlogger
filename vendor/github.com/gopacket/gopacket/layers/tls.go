@@ -119,6 +119,12 @@ func (t *TLS) DecodeFromBytes(data []byte, df gopacket.DecodeFeedback) error {
 	t.BaseLayer.Contents = data
 	t.BaseLayer.Payload = nil
 
+	// Truncating alone would leave the previous packet's records in the
+	// backing arrays, where they keep that packet's buffer alive.
+	clear(t.ChangeCipherSpec)
+	clear(t.Handshake)
+	clear(t.AppData)
+	clear(t.Alert)
 	t.ChangeCipherSpec = t.ChangeCipherSpec[:0]
 	t.Handshake = t.Handshake[:0]
 	t.AppData = t.AppData[:0]
@@ -176,6 +182,14 @@ func (t *TLS) decodeTLSRecords(data []byte, df gopacket.DecodeFeedback) error {
 			}
 			t.Alert = append(t.Alert, r)
 		case TLSHandshake:
+			// A ClientHello may be fragmented over the records that follow
+			// (RFC 5246 section 6.2.1); the fragments found here are taken
+			// together, the rest decodes record by record as before.
+			if n := t.appendFragmentedClientHello(h, data[hl:tl], data[tl:]); n > 0 {
+				tl += n
+				break
+			}
+
 			var r TLSHandshakeRecord
 			e := r.decodeFromBytes(h, data[hl:tl], df)
 			if e != nil {
