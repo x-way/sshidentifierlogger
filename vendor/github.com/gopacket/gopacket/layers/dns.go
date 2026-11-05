@@ -316,17 +316,56 @@ type DNS struct {
 // LayerType returns gopacket.LayerTypeDNS.
 func (d *DNS) LayerType() gopacket.LayerType { return LayerTypeDNS }
 
+// dnsTCPLengthPrefixLen is the size of the message length that precedes
+// every DNS message carried over TCP (RFC 1035 section 4.2.2).
+const dnsTCPLengthPrefixLen = 2
+
 // decodeDNS decodes the byte slice into a DNS type. It also
 // setups the application Layer in PacketBuilder.
 func decodeDNS(data []byte, p gopacket.PacketBuilder) error {
 	d := &DNS{}
+
+	// Over TCP the segment starts with the message length, not the message.
+	// Strip it when it fits the segment; a prefix claiming more than is there
+	// is a truncated capture, decoded from the first byte as it always was.
+	var rest []byte
+	if dnsOverTCP(p) {
+		data, rest = splitDNSOverTCP(data)
+	}
+
 	err := d.DecodeFromBytes(data, p)
 	if err != nil {
 		return err
 	}
+	d.BaseLayer.Payload = rest
 	p.AddLayer(d)
 	p.SetApplicationLayer(d)
 	return nil
+}
+
+// dnsOverTCP reports whether the message being decoded rides on TCP. The
+// builder exposes no layers, but the packets NewPacket builds are Packets.
+func dnsOverTCP(p gopacket.PacketBuilder) bool {
+	pkt, ok := p.(gopacket.Packet)
+	if !ok {
+		return false
+	}
+	_, ok = pkt.TransportLayer().(*TCP)
+	return ok
+}
+
+// splitDNSOverTCP cuts the first length-prefixed message out of a TCP
+// segment, e.g. [00 21][33 bytes][next message...] into the 33 bytes and
+// what follows. A prefix the segment cannot satisfy leaves data as it is.
+func splitDNSOverTCP(data []byte) (msg, rest []byte) {
+	if len(data) < dnsTCPLengthPrefixLen {
+		return data, nil
+	}
+	end := dnsTCPLengthPrefixLen + int(binary.BigEndian.Uint16(data))
+	if end > len(data) {
+		return data, nil
+	}
+	return data[dnsTCPLengthPrefixLen:end], data[end:]
 }
 
 // DecodeFromBytes decodes the slice into the DNS struct.
@@ -639,9 +678,15 @@ func dnsNameSize(name []byte, m *dnsNameMeta) (int, error) {
 func recSize(rr *DNSResourceRecord) (int, error) {
 	switch rr.Type {
 	case DNSTypeA:
-		return 4, nil
+		if len(rr.IP) == 0 {
+			return 0, nil // empty RDATA, as in RFC 2136 updates
+		}
+		return net.IPv4len, nil
 	case DNSTypeAAAA:
-		return 16, nil
+		if len(rr.IP) == 0 {
+			return 0, nil // empty RDATA, as in RFC 2136 updates
+		}
+		return net.IPv6len, nil
 	case DNSTypeNS:
 		return dnsNameSize(rr.NS, rr.rdataMeta())
 	case DNSTypeCNAME:
@@ -1125,11 +1170,22 @@ func (rr *DNSResourceRecord) encode(data []byte, offset int, opts gopacket.Seria
 	binary.BigEndian.PutUint16(data[noff+2:], uint16(rr.Class))
 	binary.BigEndian.PutUint32(data[noff+4:], uint32(rr.TTL))
 
+	// PrependBytes does not zero, and an address of the wrong length would
+	// leave part of the reserved RDATA unwritten; clear it first. An empty
+	// address reserves nothing (RDLENGTH 0).
 	switch rr.Type {
 	case DNSTypeA:
-		copy(data[noff+10:], rr.IP.To4())
+		if len(rr.IP) > 0 {
+			rdata := data[noff+10 : noff+10+net.IPv4len]
+			copy(rdata, lotsOfZeros[:])
+			copy(rdata, rr.IP.To4())
+		}
 	case DNSTypeAAAA:
-		copy(data[noff+10:], rr.IP)
+		if len(rr.IP) > 0 {
+			rdata := data[noff+10 : noff+10+net.IPv6len]
+			copy(rdata, lotsOfZeros[:])
+			copy(rdata, rr.IP)
+		}
 	case DNSTypeNS:
 		if _, err = encodeDNSName(rr.NS, rr.rdataMeta(), data, noff+10); err != nil {
 			return 0, err
@@ -1348,8 +1404,14 @@ func decodeSVCB(data []byte, offset int, buffer *[]byte) (DNSSVCB, dnsNameLabels
 func (rr *DNSResourceRecord) decodeRData(data []byte, offset int, buffer *[]byte) error {
 	switch rr.Type {
 	case DNSTypeA:
+		if len(rr.Data) != net.IPv4len {
+			return errors.New("A record is not 4 bytes")
+		}
 		rr.IP = rr.Data
 	case DNSTypeAAAA:
+		if len(rr.Data) != net.IPv6len {
+			return errors.New("AAAA record is not 16 bytes")
+		}
 		rr.IP = rr.Data
 	case DNSTypeTXT, DNSTypeHINFO:
 		rr.TXT = rr.Data
