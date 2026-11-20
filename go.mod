@@ -2,7 +2,7 @@ module github.com/x-way/sshidentifierlogger
 
 go 1.27.0
 
-require github.com/gopacket/gopacket v1.7.7
+require github.com/gopacket/gopacket v1.8.0
 
 require (
 	golang.org/x/net v0.63.0 // indirect
